@@ -1,0 +1,23 @@
+RUVI 5.2 - VERIFIED ANDROID FOLDERS
+
+This ZIP contains real folder entries, not only loose files.
+
+IMPORTANT: GitHub's mobile Upload Files page may FLATTEN uploaded folders.
+If files appear at the repository root, they are in the WRONG LOCATION.
+Do not upload only the ZIP or only select individual files from it.
+
+Required exact paths:
+.github/workflows/android.yml
+app/build.gradle
+app/src/main/AndroidManifest.xml
+app/src/main/java/app/ruvi/privateapp/MainActivity.java
+app/src/main/assets/index.html
+
+Repository: https://github.com/srividhyarangaram-ctrl/Ruvi-Pro
+Branch: Main (capital M).
+
+After upload verify GitHub Code tab shows an 'app' FOLDER and a '.github' FOLDER.
+The Actions tab must show 'Ruvi 5.2 Android test APK'.
+If your phone flattens uploads, use GitHub web editor and enter the full paths above, or a Git client supporting directory uploads.
+
+Test-only debug app. Use fictional financial data.
