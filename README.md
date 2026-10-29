@@ -1,32 +1,24 @@
-# Ruvi 2.0 — Subscription Manager + Gmail receipt discovery
+# Ruvi 5.2 — PRIVATE ANDROID TEST BUILD (NOT PRODUCTION APPROVED)
 
-## What works
-- Add/edit/delete subscriptions, recurring-cost totals, JSON backup and import.
-- Optional Gmail receipt discovery using Google Identity Services OAuth 2.0 and Gmail API read-only scope.
-- Scans up to 60 possible receipt messages from the past two years. Shows subject, sender, snippet and estimated payment details. You must review and explicitly save each candidate.
-- Gmail access token stays in memory, not localStorage; no Ruvi backend receives Gmail content.
+This is an Android Studio/Gradle source project for a private test APK. It has NOT been compiled, signed for release, tested on a OnePlus, or reviewed by Google Play. The GitHub Actions workflow produces a **debug-signed APK**, not a production-signed release or Play Store AAB. Do not distribute it publicly.
 
-## Google Cloud setup (required for Gmail scan)
-1. In Google Cloud Console, create a project you control and enable **Gmail API**.
-2. Configure Google Auth Platform / OAuth consent screen; use the appropriate External audience and add your Gmail address as a test user while in testing mode.
-3. Create **OAuth Client ID → Web application**. Add the **exact HTTPS origin** where you deploy Ruvi to **Authorized JavaScript origins** (for example `https://YOURNAME.github.io`; the origin does not include `/ruvi/`).
-4. Copy the **client ID**, NOT a client secret, into Ruvi's Gmail section. Google may require app verification and a privacy policy for public use of Gmail read-only scope. In testing mode, only allowed test users can authorise; Google may impose token expiry and test-user limits.
-5. Open Ruvi at the registered origin, click Connect Gmail & scan, and consent. Google may warn about an unverified app if you have not completed verification; do not bypass warnings for projects you don't control.
+## Phone-only build using GitHub
+1. On your phone create a **private** GitHub repository; enable two-factor authentication.
+2. Upload the extracted project files preserving folders, including `.github/workflows/android.yml` (mobile GitHub UI can make this difficult; a browser in desktop mode or GitHub's web editor may help).
+3. Open Actions > Private Ruvi Android test APK > Run workflow (or push to main).
+4. Wait for a successful build, download `Ruvi-private-debug-APK` artifact and extract its APK on your phone.
+5. Install only your own generated APK. Android may request permission to install from the browser/file manager. Revoke that permission afterward.
+6. Test with **fictional data only** until security work is complete. Verify dashboard, manual entries, duplicate alerts, refund handling, backup/restore and cancellation-pending behavior.
 
-## Secure Android install
-1. Publish the `ruvi` directory using an HTTPS static host (GitHub Pages, Cloudflare Pages, Netlify, etc.). Use an account and project you control. Do not upload secrets, credentials or downloaded email content.
-2. Verify the site URL, HTTPS padlock and that it is your own deployment. Open it in Chrome on Android.
-3. Use Chrome menu → Add to Home screen / Install app (label varies). Ruvi opens as a standalone web app. No APK sideloading, unknown-sources permission, or banking permissions are required.
-4. Connect Gmail from the installed app. If OAuth fails in standalone mode, open the same HTTPS URL in Chrome and connect there; tokens are deliberately not persisted across app sessions.
-5. Use Disconnect to revoke the current token. Also revoke Ruvi from Google Account → Security → Third-party connections if desired.
+## Deliberate restrictions
+- Gmail scanning is **disabled** in this APK because a local WebView cannot safely reuse the web OAuth flow as-is. Production requires a compliant Android OAuth integration, consent, scope minimisation and Google verification as applicable.
+- Direct bank, UPI, ecommerce account sync and automatic background transaction refresh are **not implemented**.
+- Local data is in WebView browser storage and is **not encrypted at the application layer**. Do not put real sensitive banking data in this test build.
+- The app cannot cancel provider billing; it can only track cancellation intent.
+- No external INTERNET permission is requested; this test build is offline and uses only bundled assets.
+- Review security, privacy policy, account/data deletion, Play Data Safety, financial features declaration, Gmail restricted scope rules, Android target SDK, accessibility and closed testing before any Play Store submission.
 
-## Security and limitations
-- This is a **PWA**, not a signed Play Store APK. No production deployment or OAuth verification has been done on your behalf.
-- Gmail access is **read-only**; no emails are modified or deleted. It uses a broad Gmail scope, so connect only to a deployment you trust. Google shows the actual permissions during consent.
-- Search is heuristic: may miss subscriptions, include one-off receipts, or misread amounts/currency/cadence. It cannot reliably prove active status, usage, or renewal date. Always verify before saving. Non-INR values are intentionally not prefilled as INR.
-- Receipt metadata includes snippets, which can contain personal information. They are displayed on the device but not saved to Ruvi's subscription database. Browser localStorage holds manually saved subscription data **unencrypted**; avoid shared devices and export backups carefully.
-- Data does not automatically sync across devices. Google access tokens are kept in memory and disappear on reload. No server-side scheduled scanning or push alerts are implemented.
-- For broader deployment: add an explicit privacy policy, verified OAuth app, stronger encrypted storage and security review.
-
-## Version 2.1 duplicate detection
-Ruvi flags identical or similar subscription service names, displays possible duplicate pairs, warns before adding a matching subscription, and flags Gmail receipt suggestions already in the dashboard. This is heuristic matching, not proof of duplicate charges. It never automatically deletes, cancels, or combines entries. Review payment accounts and billing periods before taking action.
+## Known limitations
+- CSV upload and backup file download may require Android-native file chooser/download handlers; these are not implemented in this minimal WebView wrapper.
+- Build workflow and dependency compatibility are unverified here because Android SDK/Gradle are unavailable in this environment.
+- No production signing key is generated or stored. Never commit signing keys or credentials to GitHub.

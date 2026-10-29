@@ -1,0 +1,13 @@
+# Release gate (all currently unverified unless stated)
+- [ ] Build and install debug APK on actual OnePlus device
+- [ ] Test add/edit/delete, renewals, duplicate matches and refunds with synthetic data
+- [ ] Test offline restart and storage persistence; app upgrade migration
+- [ ] Replace WebView storage with encrypted storage for sensitive records; add data export/delete
+- [ ] Native Android OAuth using approved browser flow; consent, revoke, Google Gmail scope review
+- [ ] Implement authorized transaction integration, event idempotency and reconciliation
+- [ ] Threat model, dependency scanning, static analysis, dynamic security tests
+- [ ] Privacy policy, disclosures, consent and user data deletion controls
+- [ ] Accessibility, crash reporting with consent, Play pre-launch testing
+- [ ] Signed release AAB, signing-key custody, target API compliance
+- [ ] Google Play Data Safety, financial features declaration, Gmail API policy verification
+- [ ] Google Play developer identity and applicable closed testing
