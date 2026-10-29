@@ -47,12 +47,12 @@ public class MainActivity extends Activity {
         view.setWebViewClient(new WebViewClientCompat() {
 
             @Override
-            public WebResourceResponse shouldInterceptRequest(
-                WebView webView,
-                Uri uri
-            ) {
-                return loader.shouldInterceptRequest(uri);
-            }
+public WebResourceResponse shouldInterceptRequest(
+    WebView webView,
+    WebResourceRequest request
+) {
+    return loader.shouldInterceptRequest(request.getUrl());
+}
 
             @Override
             public boolean shouldOverrideUrlLoading(
