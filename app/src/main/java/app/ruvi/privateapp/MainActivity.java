@@ -1,4 +1,3 @@
-
 package app.ruvi.privateapp;
 
 import android.app.Activity;
