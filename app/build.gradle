@@ -2,16 +2,3 @@
 plugins {
     id 'com.android.application'
 }
-
-android {
-    namespace 'com.ruvi.app'
-    compileSdk 35
-
-    defaultConfig {
-        applicationId 'com.ruvi.app'
-        minSdk 26
-        targetSdk 35
-        versionCode 52
-        versionName '5.2'
-    }
-}
