@@ -1,3 +1,0 @@
-Ruvi 5.0 ecommerce tracker
-
-Daily ecommerce spending updates immediately after a transaction is entered or imported. CSV columns: date,merchant,amount,category,type. YYYY-MM-DD dates; type purchase/refund. Refunds reduce net spend. All records are stored in localStorage on this browser; backup/export in the subscriptions section currently covers subscriptions only. No automatic transaction feed, bank integration, push notification, or background polling is implemented. For true after-every-transaction automatic refresh, a consented provider API or payment webhook and a secured backend are required. Never paste bank passwords, card numbers, or OTPs.
