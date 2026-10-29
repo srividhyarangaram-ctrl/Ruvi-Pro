@@ -1,20 +1,17 @@
+
 plugins {
     id 'com.android.application'
 }
 
 android {
-    namespace 'app.ruvi.privateapp'
+    namespace 'com.ruvi.app'
     compileSdk 35
 
     defaultConfig {
-        applicationId 'app.ruvi.privateapp'
+        applicationId 'com.ruvi.app'
         minSdk 26
         targetSdk 35
-        versionCode 1
-        versionName '5.2-test'
+        versionCode 52
+        versionName '5.2'
     }
-}
-
-dependencies {
-    implementation 'androidx.webkit:webkit:1.12.1'
 }
