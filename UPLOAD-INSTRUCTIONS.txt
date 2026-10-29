@@ -1,0 +1,24 @@
+RUVI 5.2 - GITHUB UPLOAD INSTRUCTIONS
+
+Repository: srividhyarangaram-ctrl/Ruvi-Pro
+Branch: Main (capital M)
+
+Upload the CONTENTS of this ZIP, not the ZIP itself.
+Keep the paths exactly as supplied. In particular:
+  .github/workflows/android.yml
+  app/build.gradle
+  app/src/main/AndroidManifest.xml
+  app/src/main/java/app/ruvi/privateapp/MainActivity.java
+  app/src/main/assets/index.html
+
+If GitHub mobile web upload flattens directories, use a mobile Git client
+that preserves folders or create files via GitHub's web editor with full paths.
+
+After committing, open:
+https://github.com/srividhyarangaram-ctrl/Ruvi-Pro/actions
+
+Workflow: Ruvi 5.2 Android test APK
+Artifact: Ruvi-private-debug-APK
+
+This is a DEBUG TEST BUILD ONLY. Use fictional financial data.
+Do not upload signing keys, passwords, tokens, or private financial records.
