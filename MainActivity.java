@@ -3,39 +3,58 @@ package app.ruvi.privateapp;
 import android.app.Activity;
 import android.os.Bundle;
 import android.content.Intent;
-import android.provider.Settings;
-import android.webkit.*;
 import android.content.IntentSender;
+import android.net.Uri;
+import android.provider.Settings;
+import android.webkit.JavascriptInterface;
+import android.webkit.WebChromeClient;
+import android.webkit.WebResourceRequest;
+import android.webkit.WebResourceResponse;
+import android.webkit.WebSettings;
+import android.webkit.WebView;
+import android.webkit.WebViewClient;
 
-import com.google.android.gms.auth.api.identity.*;
+import androidx.webkit.WebViewAssetLoader;
+import androidx.webkit.WebViewClientCompat;
+
+import com.google.android.gms.auth.api.identity.AuthorizationClient;
+import com.google.android.gms.auth.api.identity.AuthorizationRequest;
+import com.google.android.gms.auth.api.identity.Identity;
 import com.google.android.gms.common.api.Scope;
 
-import org.json.*;
+import org.json.JSONArray;
+import org.json.JSONObject;
 
-import java.net.*;
-import java.io.*;
-import java.util.*;
+import java.io.ByteArrayOutputStream;
+import java.io.InputStream;
+import java.net.HttpURLConnection;
+import java.net.URL;
+import java.net.URLEncoder;
+import java.util.Arrays;
 
 public class MainActivity extends Activity {
+
+    private static final int AUTH_REQUEST = 754;
+    private static final String GMAIL_SCOPE =
+        "https://www.googleapis.com/auth/gmail.readonly";
 
     private WebView web;
     private AuthorizationClient auth;
 
-    private static final int AUTH_REQUEST = 754;
-    private static final String SCOPE =
-        "https://www.googleapis.com/auth/gmail.readonly";
-
-    private void js(String fn, String json) {
-        runOnUiThread(() ->
-            web.evaluateJavascript(
-                "window." + fn + "(" +
-                JSONObject.quote(json) + ")",
-                null
-            )
-        );
+    private void sendToJs(String function, String value) {
+        runOnUiThread(() -> {
+            if (web != null) {
+                web.evaluateJavascript(
+                    "if(typeof window." + function +
+                    "==='function'){window." + function +
+                    "(" + JSONObject.quote(value) + ");}",
+                    null
+                );
+            }
+        });
     }
 
-    public class Bridge {
+    public class RuviBridge {
 
         @JavascriptInterface
         public String alerts() {
@@ -62,30 +81,40 @@ public class MainActivity extends Activity {
 
         @JavascriptInterface
         public void syncGmail() {
-            runOnUiThread(() -> authorize());
+            runOnUiThread(() -> authorizeGmail());
         }
 
         @JavascriptInterface
         public void disconnectGmail() {
             runOnUiThread(() -> {
                 auth.revokeAccess(
-                    Arrays.asList(new Scope(SCOPE))
+                    Arrays.asList(new Scope(GMAIL_SCOPE))
+                ).addOnSuccessListener(unused ->
+                    sendToJs(
+                        "ruviGmailStatus",
+                        "Gmail disconnected"
+                    )
+                ).addOnFailureListener(error ->
+                    sendToJs(
+                        "ruviGmailStatus",
+                        "Disconnect failed: " +
+                        error.getMessage()
+                    )
                 );
-                js("ruviGmailStatus", "Gmail access revoked");
             });
         }
     }
 
-    private void authorize() {
-        js(
+    private void authorizeGmail() {
+        sendToJs(
             "ruviGmailStatus",
-            "Requesting Gmail read-only authorization…"
+            "Checking Gmail authorization..."
         );
 
         AuthorizationRequest request =
             AuthorizationRequest.builder()
                 .setRequestedScopes(
-                    Arrays.asList(new Scope(SCOPE))
+                    Arrays.asList(new Scope(GMAIL_SCOPE))
                 )
                 .build();
 
@@ -100,148 +129,155 @@ public class MainActivity extends Activity {
                             null, 0, 0, 0
                         );
                     } catch (
-                        IntentSender.SendIntentException e
+                        IntentSender.SendIntentException error
                     ) {
-                        js(
+                        sendToJs(
                             "ruviGmailStatus",
-                            "Authorization launch failed: " +
-                            e.getMessage()
+                            "Authorization failed: " +
+                            error.getMessage()
                         );
                     }
                 } else {
-                    scan(result.getAccessToken());
+                    scanGmail(result.getAccessToken());
                 }
             })
-            .addOnFailureListener(e ->
-                js(
+            .addOnFailureListener(error ->
+                sendToJs(
                     "ruviGmailStatus",
                     "Google authorization failed: " +
-                    e.getMessage()
+                    error.getMessage()
                 )
             );
     }
 
     @Override
     protected void onActivityResult(
-        int request,
-        int result,
+        int requestCode,
+        int resultCode,
         Intent data
     ) {
-        super.onActivityResult(request, result, data);
+        super.onActivityResult(
+            requestCode, resultCode, data
+        );
 
-        if (request == AUTH_REQUEST) {
-            try {
-                if (result != RESULT_OK) {
-                    throw new Exception(
-                        "User cancelled authorization"
-                    );
-                }
+        if (requestCode != AUTH_REQUEST) return;
 
-                scan(
-                    auth.getAuthorizationResultFromIntent(data)
-                        .getAccessToken()
-                );
+        if (resultCode != RESULT_OK || data == null) {
+            sendToJs(
+                "ruviGmailStatus",
+                "Gmail authorization cancelled"
+            );
+            return;
+        }
 
-            } catch (Exception e) {
-                js(
-                    "ruviGmailStatus",
-                    "Gmail authorization: " + e.getMessage()
-                );
-            }
+        try {
+            scanGmail(
+                auth.getAuthorizationResultFromIntent(data)
+                    .getAccessToken()
+            );
+        } catch (Exception error) {
+            sendToJs(
+                "ruviGmailStatus",
+                "Authorization error: " +
+                error.getMessage()
+            );
         }
     }
 
-    private JSONObject get(
+    private JSONObject gmailGet(
         String path,
         String token
     ) throws Exception {
 
-        HttpURLConnection conn =
+        HttpURLConnection connection =
             (HttpURLConnection) new URL(
                 "https://gmail.googleapis.com/gmail/v1/users/me/"
                 + path
             ).openConnection();
 
-        conn.setRequestProperty(
-            "Authorization",
-            "Bearer " + token
+        connection.setRequestProperty(
+            "Authorization", "Bearer " + token
         );
+        connection.setConnectTimeout(15000);
+        connection.setReadTimeout(15000);
 
-        conn.setConnectTimeout(12000);
-        conn.setReadTimeout(12000);
+        try {
+            int status = connection.getResponseCode();
 
-        int code = conn.getResponseCode();
-
-        if (code != 200) {
-            throw new IOException(
-                "Gmail API HTTP " + code +
-                " (check Gmail API and OAuth consent)"
-            );
-        }
-
-        try (InputStream in = conn.getInputStream()) {
-            ByteArrayOutputStream b =
-                new ByteArrayOutputStream();
-
-            byte[] chunk = new byte[4096];
-            int n;
-
-            while ((n = in.read(chunk)) != -1) {
-                b.write(chunk, 0, n);
+            if (status != 200) {
+                throw new Exception(
+                    "Gmail API returned HTTP " + status
+                );
             }
 
-            return new JSONObject(
-                b.toString("UTF-8")
-            );
+            try (InputStream input =
+                     connection.getInputStream()) {
 
+                ByteArrayOutputStream output =
+                    new ByteArrayOutputStream();
+
+                byte[] buffer = new byte[4096];
+                int count;
+
+                while ((count = input.read(buffer)) != -1) {
+                    output.write(buffer, 0, count);
+                }
+
+                return new JSONObject(
+                    output.toString("UTF-8")
+                );
+            }
         } finally {
-            conn.disconnect();
+            connection.disconnect();
         }
     }
 
-    private String header(
-        JSONObject m,
-        String key
+    private String getHeader(
+        JSONObject message,
+        String name
     ) {
-        JSONArray hs =
-            m.optJSONObject("payload") != null
-            ? m.optJSONObject("payload")
-                .optJSONArray("headers")
-            : null;
+        JSONObject payload =
+            message.optJSONObject("payload");
 
-        if (hs != null) {
-            for (int i = 0; i < hs.length(); i++) {
-                JSONObject h = hs.optJSONObject(i);
+        if (payload == null) return "";
 
-                if (h != null &&
-                    key.equalsIgnoreCase(
-                        h.optString("name")
-                    )) {
-                    return h.optString("value");
-                }
+        JSONArray headers =
+            payload.optJSONArray("headers");
+
+        if (headers == null) return "";
+
+        for (int i = 0; i < headers.length(); i++) {
+            JSONObject header =
+                headers.optJSONObject(i);
+
+            if (header != null &&
+                name.equalsIgnoreCase(
+                    header.optString("name")
+                )) {
+                return header.optString("value");
             }
         }
 
         return "";
     }
 
-    private void scan(String token) {
+    private void scanGmail(String token) {
         if (token == null || token.isEmpty()) {
-            js(
+            sendToJs(
                 "ruviGmailStatus",
-                "No Gmail access token returned"
+                "No Gmail access token received"
             );
             return;
         }
 
         new Thread(() -> {
             try {
-                js(
+                sendToJs(
                     "ruviGmailStatus",
-                    "Scanning Gmail receipt metadata…"
+                    "Scanning payment receipts..."
                 );
 
-                String q = URLEncoder.encode(
+                String query = URLEncoder.encode(
                     "newer_than:2y " +
                     "(subscription OR renewal OR recurring " +
                     "OR invoice OR payment OR UPI OR debited) " +
@@ -249,25 +285,27 @@ public class MainActivity extends Activity {
                     "UTF-8"
                 );
 
-                JSONObject list = get(
-                    "messages?maxResults=100&q=" + q,
+                JSONObject response = gmailGet(
+                    "messages?maxResults=100&q=" + query,
                     token
                 );
 
-                JSONArray msgs =
-                    list.optJSONArray("messages");
+                JSONArray messages =
+                    response.optJSONArray("messages");
 
-                JSONArray records = new JSONArray();
+                JSONArray results = new JSONArray();
 
-                if (msgs != null) {
-                    for (int i = 0; i < msgs.length(); i++) {
-                        String id = msgs
+                if (messages != null) {
+                    for (int i = 0;
+                         i < messages.length(); i++) {
+
+                        String id = messages
                             .getJSONObject(i)
                             .optString("id");
 
                         if (id.isEmpty()) continue;
 
-                        JSONObject m = get(
+                        JSONObject message = gmailGet(
                             "messages/" + id +
                             "?format=metadata" +
                             "&metadataHeaders=Subject" +
@@ -276,48 +314,49 @@ public class MainActivity extends Activity {
                             token
                         );
 
-                        JSONObject rec = new JSONObject();
+                        JSONObject record =
+                            new JSONObject();
 
-                        rec.put("id", "gmail:" + id);
-                        rec.put("source", "gmail");
-                        rec.put(
+                        record.put("id", "gmail:" + id);
+                        record.put("source", "gmail");
+                        record.put(
                             "subject",
-                            header(m, "Subject")
+                            getHeader(message, "Subject")
                         );
-                        rec.put(
+                        record.put(
                             "from",
-                            header(m, "From")
+                            getHeader(message, "From")
                         );
-                        rec.put(
+                        record.put(
                             "snippet",
-                            m.optString("snippet")
+                            message.optString("snippet")
                         );
-                        rec.put(
+                        record.put(
                             "time",
-                            m.optLong("internalDate")
+                            message.optLong("internalDate")
                         );
 
-                        records.put(rec);
+                        results.put(record);
                     }
                 }
 
-                js(
+                sendToJs(
                     "ruviGmailResults",
-                    records.toString()
+                    results.toString()
                 );
 
-                js(
+                sendToJs(
                     "ruviGmailStatus",
                     "Gmail scan complete: " +
-                    records.length() +
-                    " possible receipts. Review detected records."
+                    results.length() +
+                    " possible receipts found"
                 );
 
-            } catch (Exception e) {
-                js(
+            } catch (Exception error) {
+                sendToJs(
                     "ruviGmailStatus",
-                    "Gmail scan failed: " +
-                    e.getMessage()
+                    "Gmail sync failed: " +
+                    error.getMessage()
                 );
             }
         }).start();
@@ -332,30 +371,79 @@ public class MainActivity extends Activity {
         web = new WebView(this);
         setContentView(web);
 
-        WebSettings s = web.getSettings();
-
-        s.setJavaScriptEnabled(true);
-        s.setDomStorageEnabled(true);
-        s.setAllowFileAccess(false);
-        s.setAllowContentAccess(false);
-        s.setAllowFileAccessFromFileURLs(false);
-        s.setAllowUniversalAccessFromFileURLs(false);
+        WebSettings settings = web.getSettings();
+        settings.setJavaScriptEnabled(true);
+        settings.setDomStorageEnabled(true);
+        settings.setAllowFileAccess(false);
+        settings.setAllowContentAccess(false);
+        settings.setAllowFileAccessFromFileURLs(false);
+        settings.setAllowUniversalAccessFromFileURLs(false);
 
         web.addJavascriptInterface(
-            new Bridge(),
-            "RuviNative"
+            new RuviBridge(), "RuviNative"
         );
 
-        web.setWebViewClient(new WebViewClient());
+        WebViewAssetLoader loader =
+            new WebViewAssetLoader.Builder()
+                .addPathHandler(
+                    "/assets/",
+                    new WebViewAssetLoader
+                        .AssetsPathHandler(this)
+                )
+                .build();
+
+        web.setWebChromeClient(
+            new WebChromeClient()
+        );
+
+        web.setWebViewClient(
+            new WebViewClientCompat() {
+
+                @Override
+                public WebResourceResponse
+                shouldInterceptRequest(
+                    WebView view,
+                    WebResourceRequest request
+                ) {
+                    return loader.shouldInterceptRequest(
+                        request.getUrl()
+                    );
+                }
+
+                @Override
+                public boolean shouldOverrideUrlLoading(
+                    WebView view,
+                    WebResourceRequest request
+                ) {
+                    Uri uri = request.getUrl();
+
+                    if ("appassets.androidplatform.net"
+                            .equalsIgnoreCase(uri.getHost())) {
+                        return false;
+                    }
+
+                    String scheme = uri.getScheme();
+
+                    if ("https".equals(scheme) ||
+                        "http".equals(scheme)) {
+                        startActivity(new Intent(
+                            Intent.ACTION_VIEW, uri
+                        ));
+                    }
+
+                    return true;
+                }
+            }
+        );
 
         web.loadUrl(
-            "file:///android_asset/index.html"
+            "https://appassets.androidplatform.net/assets/index.html"
         );
     }
 
     @Override
     public void onBackPressed() {
-        if (web.canGoBack()) {
+        if (web != null && web.canGoBack()) {
             web.goBack();
         } else {
             super.onBackPressed();
