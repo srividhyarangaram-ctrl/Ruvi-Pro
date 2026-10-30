@@ -84,25 +84,16 @@ public class MainActivity extends Activity {
             runOnUiThread(() -> authorizeGmail());
         }
 
+        
         @JavascriptInterface
-        public void disconnectGmail() {
-            runOnUiThread(() -> {
-                auth.revokeAccess(
-                    Arrays.asList(new Scope(GMAIL_SCOPE))
-                ).addOnSuccessListener(unused ->
-                    sendToJs(
-                        "ruviGmailStatus",
-                        "Gmail disconnected"
-                    )
-                ).addOnFailureListener(error ->
-                    sendToJs(
-                        "ruviGmailStatus",
-                        "Disconnect failed: " +
-                        error.getMessage()
-                    )
-                );
-            });
-        }
+         public void disconnectGmail() {
+               runOnUiThread(() ->
+                   sendToJs(
+                  "ruviGmailStatus",
+                  "Gmail disconnect is temporarily unavailable."
+                )
+             );
+        }      
     }
 
     private void authorizeGmail() {
