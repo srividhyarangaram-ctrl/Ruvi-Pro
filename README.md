@@ -1,24 +1,24 @@
-# Ruvi 5.3 — safe onboarding patch
+# Ruvi 5.4 Premium — Full Android Source
 
-## Status
-This is a working onboarding/tooltips patch, NOT a working Gmail, Google Play or GPay integration. It does not silently access messages, transactions or notifications. Do not advertise full automatic discovery until separately implemented, consented, tested and approved.
+## Features
+- Premium dark Android WebView dashboard and existing local subscription/purchase management.
+- **Sync Now** requests user confirmation, asks Google Play services for Gmail read-only OAuth authorization, and scans up to 100 recent matching receipt metadata items.
+- Android notification listener captures possible payment notifications *after* notification-access permission is enabled.
+- Candidate extraction and best-effort deduplication by reference or merchant/amount/day; all candidates require review.
+- Android/Google Play services remember account authorization where supported; no Gmail password, UPI PIN, or refresh token is stored by Ruvi. Reauthorization may be required.
 
-## Target repository and branch
-Repository: `srividhyarangaram-ctrl/Ruvi-Pro`
-Base branch: `Main` (capital M)
-Create branch: `feature/ruvi-5.3-discovery`
+## Required configuration before Gmail can work
+1. Create a Google Cloud project and enable **Gmail API**.
+2. Configure OAuth consent screen, add test users if in testing, and request `gmail.readonly` scope (restricted scope; public production use may require Google verification and a security assessment).
+3. Register an **Android OAuth client** for package `com.ruvi.pro` with the signing certificate SHA-1 of the APK. Debug and release signing certificates differ.
+4. Install on an Android phone with Google Play services. Tap Sync Now and grant consent.
+5. On Android, grant Ruvi Notification access in system Settings. The listener only receives notifications after access is enabled and may miss alerts or receive incomplete messages.
 
-## Apply on GitHub using your phone
-1. Open the repository in Chrome; choose `Main` in the branch selector, then create `feature/ruvi-5.3-discovery` from `Main`.
-2. Upload `app/src/main/assets/onboarding53.js` from this ZIP to the same repository path on the new branch. GitHub's web editor may require desktop-site mode.
-3. Edit `app/src/main/assets/index.html` on the new branch. Immediately before `</body>`, add exactly:
-   `<script src="onboarding53.js"></script>`
-4. Edit `app/build.gradle`: change `versionCode 52` to `versionCode 53`, and `versionName '5.2'` to `versionName '5.3'`.
-5. Commit the changes to `feature/ruvi-5.3-discovery` (not Main). Open a pull request to Main after checking the Actions build and testing the UI on your phone.
-6. Optional: upload `docs/DISCOVERY_INTEGRATION_PLAN.md` for future engineering reference.
-
-## What works
-First-launch guided walkthrough, skip/reopen option, contextual help for spend, duplicates and shopping, explicit unavailable-integration warning. Does not alter saved subscriptions.
-
-## Not included
-Gmail OAuth, Gmail receipt parsing, native notification listener, Google Play account subscription API, Google Pay transaction API, background sync, production encryption, Play Store compliance verification. These require additional code, permissions, security review, and live-device testing.
+## Safety / limitations
+- This is source code, **not a verified APK**; compile and test via GitHub Actions and on a device.
+- UPI/bank accounts are **not directly accessed**; notification-derived payment candidates are not verified transactions.
+- Gmail receipt scanning is a heuristic, not guaranteed discovery of all active subscriptions.
+- Candidate previews and notification content are stored locally in app storage and are not encrypted; do not use this prototype with sensitive accounts until encrypted storage and retention controls are implemented.
+- Deduplication is best-effort and can have false positives; do not treat totals as reconciled financial statements.
+- The UI does not yet automatically commit candidates to financial records: they are reviewable signals.
+- Google authorization is delegated to Google Play services; Ruvi does not persist Google credentials.
