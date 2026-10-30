@@ -1,12 +1,12 @@
-
 name: Ruvi 5.2 Android APK
 
 on:
   push:
     branches:
       - Main
+      - feature/ruvi-5.4-full-sync
   workflow_dispatch:
-
+  
 permissions:
   contents: read
 
